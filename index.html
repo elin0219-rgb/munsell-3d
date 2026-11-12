@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>먼셀 색입체 3D</title>
+<style>
+:root{--bg:#f6f6f4;--panel:#ffffff;--ink:#1d1d1f;--sub:#6a6a6e;--line:#d9d9d6;--acc:#2b4fd8;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17181a;--panel:#212326;--ink:#ececea;--sub:#9a9ca0;--line:#3a3c40;--acc:#7f9bff}}
+:root[data-theme="dark"]{--bg:#17181a;--panel:#212326;--ink:#ececea;--sub:#9a9ca0;--line:#3a3c40;--acc:#7f9bff}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:"Pretendard","Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;font-size:14px;line-height:1.55}
+body{display:flex;flex-direction:column}
+#app{display:flex;flex:1;min-height:0}
+footer{flex:none;text-align:center;font-size:12px;color:var(--sub);background:var(--panel);border-top:1px solid var(--line);padding:8px 12px}
+#stage{flex:1;position:relative;min-width:0;background:#808080;touch-action:none}
+canvas{display:block;width:100%;height:100%;cursor:grab}
+canvas:active{cursor:grabbing}
+#info{position:absolute;left:14px;bottom:14px;display:flex;gap:12px;align-items:center;background:var(--panel);border:1px solid var(--line);padding:10px 14px;border-radius:8px;min-width:200px}
+#sw{width:44px;height:44px;border-radius:6px;border:1px solid var(--line)}
+#nm{font-size:18px;font-weight:700}
+#sb{color:var(--sub);font-size:12px}
+aside{width:320px;overflow:auto;background:var(--panel);border-left:1px solid var(--line);padding:18px 18px 28px}
+h1{font-size:20px;margin:0 0 4px}
+h2{font-size:14px;margin:20px 0 8px}
+p{margin:0 0 8px;color:var(--sub)}
+.row{display:flex;gap:6px;flex-wrap:wrap}
+button{font:inherit;color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:6px;padding:6px 10px;cursor:pointer}
+button[aria-pressed="true"]{background:var(--acc);border-color:var(--acc);color:#fff}
+button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+input[type=range]{width:100%;accent-color:var(--acc)}
+.ax{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;color:var(--sub)}
+.ax b{color:var(--ink)}
+.note{font-size:12px;margin-top:18px}
+.pr{display:grid;grid-template-columns:58px 1fr 84px;gap:10px;align-items:center;width:100%;text-align:left;padding:5px 8px;margin-bottom:4px}
+.bar{position:relative;height:6px;background:var(--line);border-radius:3px}
+.bar i{position:absolute;top:-4px;width:14px;height:14px;border-radius:50%;margin-left:-7px;border:2px solid var(--panel);box-sizing:border-box;outline:1px solid var(--line)}
+.pr small{color:var(--sub);font-size:12px;text-align:right}
+.lg{display:flex;justify-content:space-between;font-size:11px;color:var(--sub);padding:0 8px 4px 76px}
+label.ck{display:flex;gap:6px;align-items:center;margin-top:8px}
+@media (max-width:760px){#app{flex-direction:column}aside{width:auto;height:46%;border-left:0;border-top:1px solid var(--line)}#stage{flex:1}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="stage"><canvas id="cv" aria-label="먼셀 색입체 3D 보기"></canvas>
+    <div id="info"><div id="sw"></div><div><div id="nm">색 위에 올려보세요</div><div id="sb">드래그로 회전 · 휠로 확대</div></div></div>
+  </div>
+  <aside>
+    <h1>먼셀 색입체</h1>
+    <p>색을 색상·명도·채도 세 축으로 나누어 하나의 입체로 배열한 체계입니다.</p>
+    <div class="ax">
+      <b>색상 H</b><span>둘레 방향. 빨강에서 자주까지 40단계</span>
+      <b>명도 V</b><span>세로 방향. 1(어두움)–9(밝음)</span>
+      <b>채도 C</b><span>중심에서 멀어질수록 선명함</span>
+    </div>
+    <h2>색상별 고유색의 명도</h2>
+    <p>각 색상에서 채도가 가장 높은 색칩(고유색)이 놓인 명도입니다. 색상마다 높이가 다릅니다. 눌러서 해당 색상 페이지를 봅니다.</p>
+    <div class="lg"><span>어두움</span><span>명도 1 ~ 9</span><span>밝음</span></div>
+    <div id="pl"></div>
+    <label class="ck"><input type="checkbox" id="spb" checked> 고유색 이름 표시</label>
+    <h2>보기 방식</h2>
+    <div class="row" id="modes">
+      <button data-m="0" aria-pressed="true">전체</button>
+      <button data-m="1" aria-pressed="false">색상 단면</button>
+      <button data-m="2" aria-pressed="false">명도 단면</button>
+      <button data-m="3" aria-pressed="false">채도 단면</button>
+    </div>
+    <div id="sl" style="margin-top:12px;display:none">
+      <label for="rg" id="rl"></label>
+      <input id="rg" type="range" min="0" max="39" value="0">
+    </div>
+    <p id="md" style="margin-top:8px"></p>
+    <h2>시점</h2>
+    <div class="row">
+      <button id="vt">위에서</button><button id="vs">옆에서</button><button id="va">기본</button>
+      <button id="ar" aria-pressed="true">자동 회전</button>
+    </div>
+    <h2>배경색</h2>
+    <div class="row" id="bgs">
+      <button data-c="#808080" aria-pressed="true">회색 N5</button>
+      <button data-c="#ffffff" aria-pressed="false">흰색</button>
+      <button data-c="#000000" aria-pressed="false">검정</button>
+    </div>
+    <p class="note">색 값은 CIELAB 기반 근사 변환이며 공식 먼셀 렌더케이션 표와는 약간 다를 수 있습니다. sRGB로 표현 가능한 범위만 표시하므로 입체가 불규칙한 모양이 됩니다. 이것이 먼셀 색입체의 실제 특징입니다. 고유색의 명도 위치도 이 근사 변환으로 계산한 값입니다.</p>
+  </aside>
+</div>
+<footer>Copyright © Drawup studio. (Yoonsung). All rights reserved.</footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const NAMES=['R','YR','Y','GY','G','BG','B','PB','P','RP'];
+const KO=['빨강','주황','노랑','연두','초록','청록','파랑','남색','보라','자주'];
+const TBL=[25,58,95,125,160,195,240,285,325,355];
+const hueAngle=h=>{const p=(((h-1)/4)%10+10)%10,i=Math.floor(p),f=p-i;let a=TBL[i],b=TBL[(i+1)%10];if(i===9)b+=360;return(a+(b-a)*f)%360};
+const lin=(L,C,hd)=>{const r=hd*Math.PI/180,a=C*Math.cos(r),b=C*Math.sin(r),fy=(L+16)/116,fx=fy+a/500,fz=fy-b/200;
+ const f=t=>t**3>0.008856?t**3:(t-16/116)/7.787,X=.95047*f(fx),Y=f(fy),Z=1.08883*f(fz);
+ return[3.2406*X-1.5372*Y-.4986*Z,-.9689*X+1.8758*Y+.0415*Z,.0557*X-.204*Y+1.057*Z]};
+const gm=c=>c<=.0031308?12.92*c:1.055*Math.pow(c,1/2.4)-.055;
+const hex=c=>'#'+c.map(x=>Math.round(Math.min(1,Math.max(0,x))*255).toString(16).padStart(2,'0')).join('').toUpperCase();
+const fmtN=h=>{const n=(h%4+1)*2.5;return(n%1?n:n)+NAMES[Math.floor(h/4)]};
+
+// chips
+const list=[];
+const SX=.2,SY=.62;
+for(let v=1;v<=9;v++){
+  const g=gm(lin(v*10,0,0)[0]);list.push({h:0,v,c:0,rgb:[g,g,g],x:0,y:(v-5)*SY,z:0,n:'N '+v});
+  for(let h=0;h<40;h++)for(let c=2;c<=24;c+=2){
+    const l=lin(v*10,c*5.2,hueAngle(h));
+    if(l.some(x=>x<-.002||x>1.002))continue;
+    const t=-h/40*Math.PI*2+Math.PI/2;
+    list.push({h,v,c,rgb:l.map(gm),x:Math.cos(t)*c*SX,y:(v-5)*SY,z:-Math.sin(t)*c*SX,n:fmtN(h)+' '+v+'/'+c});
+  }
+}
+
+// three
+const cv=document.getElementById('cv'),stage=document.getElementById('stage');
+const R=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true});
+R.setPixelRatio(Math.min(devicePixelRatio,2));
+const S=new THREE.Scene(),cam=new THREE.PerspectiveCamera(40,1,.1,100);
+let dist=17;cam.position.set(0,0,dist);
+const G=new THREE.Group();S.add(G);
+G.rotation.set(.45,0,0);
+const mesh=new THREE.InstancedMesh(new THREE.BoxGeometry(.38,.5,.38),new THREE.MeshBasicMaterial(),list.length);
+const col=new THREE.Color(),M=new THREE.Matrix4(),Z=new THREE.Matrix4().makeScale(0,0,0);
+list.forEach((d,i)=>{d.m=new THREE.Matrix4().makeTranslation(d.x,d.y,d.z);mesh.setColorAt(i,col.setRGB(d.rgb[0],d.rgb[1],d.rgb[2]))});
+G.add(mesh);
+// axis & rings
+const lm=new THREE.LineBasicMaterial({color:0x888888,transparent:true,opacity:.5});
+G.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,-3,0),new THREE.Vector3(0,3,0)]),lm));
+[10,20].forEach(c=>{const p=[];for(let i=0;i<=64;i++){const t=i/64*Math.PI*2;p.push(new THREE.Vector3(Math.cos(t)*c*SX,-3,Math.sin(t)*c*SX))}G.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(p),lm))});
+const label=(txt,x,y,z,s)=>{const c=document.createElement('canvas');c.width=256;c.height=64;const x2=c.getContext('2d');x2.font='bold 34px sans-serif';x2.textAlign='center';x2.textBaseline='middle';x2.lineWidth=7;x2.strokeStyle='rgba(0,0,0,.55)';x2.strokeText(txt,128,32);x2.fillStyle='#fff';x2.fillText(txt,128,32);
+ const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthTest:false,transparent:true}));sp.position.set(x,y,z);sp.scale.set(s*4,s,1);G.add(sp)};
+for(let v=1;v<=9;v++)label(''+v,-.7,(v-5)*SY,0,.4);label('명도 V',0,3.4,0,.5);
+
+// 고유색: 색상별 최대 채도 칩
+const plabel=(a,b)=>{const c=document.createElement('canvas');c.width=448;c.height=120;const x=c.getContext('2d');
+ x.fillStyle='rgba(0,0,0,.72)';x.beginPath();if(x.roundRect)x.roundRect(4,4,440,112,16);else x.rect(4,4,440,112);x.fill();
+ x.fillStyle='#fff';x.textAlign='center';x.textBaseline='middle';x.font='bold 44px sans-serif';x.fillText(a,224,40);x.font='30px sans-serif';x.fillText(b,224,87);
+ const s=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),depthTest:false,transparent:true}));s.scale.set(3.6,.97,1);s.renderOrder=3;return s};
+const pures=[],vis=[];let showP=true;
+const edgeG=new THREE.EdgesGeometry(new THREE.BoxGeometry(.52,.7,.52));
+for(let k=0;k<10;k++){const h=k*4+1;let best=null;
+ for(let v=1;v<=9;v++){let cm=0;for(let c=.5;c<=26;c+=.5){if(lin(v*10,c*5.2,hueAngle(h)).some(x=>x<-.002||x>1.002))break;cm=c}
+  if(!best||cm>best.cm)best={v,cm}}
+ const c=Math.floor(best.cm/2)*2,i=list.findIndex(d=>d.h===h&&d.v===best.v&&d.c===c),d=list[i];
+ const e=new THREE.LineSegments(edgeG,new THREE.LineBasicMaterial({color:0xffffff,depthTest:false}));e.position.set(d.x,d.y,d.z);e.renderOrder=2;
+ const r=Math.hypot(d.x,d.z)||1,ux=d.x/r,uz=d.z/r;
+ const ln=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(d.x,d.y,d.z),new THREE.Vector3(d.x+ux*1.6,d.y,d.z+uz*1.6)]),new THREE.LineBasicMaterial({color:0xffffff,depthTest:false}));ln.renderOrder=2;
+ const sp=plabel(KO[k]+' 5'+NAMES[k],'명도 '+best.v+' · 채도 '+c);sp.position.set(d.x+ux*2.8,d.y,d.z+uz*2.8);
+ G.add(e,ln,sp);pures.push({k,h,v:best.v,c,i,g:[e,ln,sp]});
+ const row=document.createElement('button');row.className='pr';
+ row.innerHTML='<span>'+KO[k]+' 5'+NAMES[k]+'</span><div class="bar"><i style="left:'+((best.v-1)/8*100)+'%;background:'+hex(d.rgb)+'"></i></div><small>V '+best.v+' / C '+c+'</small>';
+ row.onclick=()=>{setMode(1);rg.value=h;apply();view(.15,G.rotation.y)};document.getElementById('pl').appendChild(row)}
+document.getElementById('spb').onchange=e=>{showP=e.target.checked;apply()};
+
+// filter
+let mode=0,H=0;
+const rg=document.getElementById('rg'),rl=document.getElementById('rl'),md=document.getElementById('md');
+const DESC=['모든 색칩을 한꺼번에 봅니다.','선택한 색상과 그 보색이 이루는 한 장의 색상 페이지입니다.','같은 명도의 색칩만 모아, 채도와 색상 차이를 비교합니다.','중심에서 같은 거리에 있는 색칩만 보여줍니다.'];
+function apply(){
+  const v=+rg.value;
+  list.forEach((d,i)=>{let on=true;
+    if(mode===1)on=d.c===0||d.h===v||d.h===(v+20)%40;
+    else if(mode===2)on=d.v===v;
+    else if(mode===3)on=d.c===v;
+    vis[i]=on;mesh.setMatrixAt(i,on?d.m:Z)});
+  pures.forEach(p=>p.g.forEach(o=>o.visible=vis[p.i]&&showP));
+  mesh.instanceMatrix.needsUpdate=true;
+  rl.textContent=mode===1?'색상: '+fmtN(v)+' ↔ '+fmtN((v+20)%40):mode===2?'명도: '+v:'채도: '+v;
+  md.textContent=DESC[mode];
+}
+function setMode(m){mode=m;const s=document.getElementById('sl');s.style.display=m?'block':'none';
+  if(m===1){rg.min=0;rg.max=39;rg.step=1;rg.value=1}
+  if(m===2){rg.min=1;rg.max=9;rg.step=1;rg.value=5}
+  if(m===3){rg.min=2;rg.max=24;rg.step=2;rg.value=10}
+  document.querySelectorAll('#modes button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.m===m));apply()}
+document.querySelectorAll('#modes button').forEach(b=>b.onclick=()=>setMode(+b.dataset.m));
+rg.oninput=apply;setMode(0);
+
+// controls
+let auto=true,drag=false,moved=0,lx=0,ly=0,tx=null,ty=null;
+const arB=document.getElementById('ar');
+arB.onclick=()=>{auto=!auto;arB.setAttribute('aria-pressed',auto)};
+const view=(x,y)=>{tx=x;ty=y;auto=false;arB.setAttribute('aria-pressed',false)};
+vt.onclick=()=>view(Math.PI/2-.001,G.rotation.y);vs.onclick=()=>view(0,G.rotation.y);va.onclick=()=>view(.45,0);
+document.querySelectorAll('#bgs button').forEach(b=>b.onclick=()=>{stage.style.background=b.dataset.c;document.querySelectorAll('#bgs button').forEach(x=>x.setAttribute('aria-pressed',x===b))});
+cv.addEventListener('pointerdown',e=>{drag=true;moved=0;lx=e.clientX;ly=e.clientY;tx=null;cv.setPointerCapture(e.pointerId)});
+cv.addEventListener('pointerup',e=>{drag=false;if(moved<5)pick(e)});
+cv.addEventListener('pointermove',e=>{
+  if(drag){const dx=e.clientX-lx,dy=e.clientY-ly;moved+=Math.abs(dx)+Math.abs(dy);lx=e.clientX;ly=e.clientY;
+    G.rotation.y+=dx*.008;G.rotation.x=Math.max(-1.57,Math.min(1.57,G.rotation.x+dy*.008))}
+  else if(e.pointerType==='mouse')pick(e)});
+cv.addEventListener('wheel',e=>{e.preventDefault();dist=Math.max(7,Math.min(30,dist*(1+e.deltaY*.001)));cam.position.z=dist},{passive:false});
+const ray=new THREE.Raycaster(),mp=new THREE.Vector2();
+function pick(e){const r=cv.getBoundingClientRect();mp.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);
+  ray.setFromCamera(mp,cam);const hit=ray.intersectObject(mesh)[0];if(!hit)return;
+  const d=list[hit.instanceId];sw.style.background=hex(d.rgb);
+  nm.textContent=d.n;sb.textContent=hex(d.rgb)+(d.c?' · '+KO[Math.floor(d.h/4)]+' 계열':' · 무채색');}
+function resize(){const w=stage.clientWidth,h=stage.clientHeight;R.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix()}
+addEventListener('resize',resize);resize();
+(function loop(){requestAnimationFrame(loop);
+  if(auto&&!drag)G.rotation.y+=.004;
+  if(tx!==null){G.rotation.x+=(tx-G.rotation.x)*.12;if(ty!==null&&tx>0.5&&tx<1.5)G.rotation.y+=(ty-G.rotation.y)*.12}
+  R.render(S,cam)})();
+</script>
+</body>
+</html>
